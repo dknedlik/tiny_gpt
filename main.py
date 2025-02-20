@@ -23,7 +23,7 @@ n_embed = 384
 n_heads = 6
 n_layers = 6
 dropout = 0.2
-train_model = True
+train_model = False
 
 
 # set the device to use GPUs if available (mps = GPU for Apple Silicon)
@@ -235,10 +235,10 @@ if train_model:
 else:
     print('loading model')
     model = BigramLanguageModel()
-    model.load_state_dict(torch.load("poe_model.pt", weights_only=True))
+    model.load_state_dict(torch.load("shakespear_model.pt", weights_only=True))
     model.eval()
     m = model.to(device)
 
 # generate from the model
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
-print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
+print(decode(m.generate(context, max_new_tokens=5000)[0].tolist()))
