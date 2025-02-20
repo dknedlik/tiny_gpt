@@ -9,6 +9,8 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
+print(f"Torch Version: {torch.__version__}, GPU: {torch.cuda.is_available()}, NUM_GPU: {torch.cuda.device_count()}")
+
 block_size = 256  # how many independent sequences will we process in parallel?
 batch_size = 64  # what is the maximum content length for predictions?
 max_iters = 5000
@@ -21,6 +23,8 @@ n_embed = 384
 n_heads = 6
 n_layers = 6
 dropout = 0.2
+train_model = True
+
 
 # set the device to use GPUs if available (mps = GPU for Apple Silicon)
 if torch.backends.mps.is_available() and not force_cpu:
@@ -34,7 +38,7 @@ else:
     device = torch.device('cpu')
 
 # We import our training data here
-with open('poe.md', 'r') as f:
+with open('./shakespear.txt', 'r') as f:
     text = f.read()
 
 # get the unique characters from the training data, and the size of the set
@@ -206,24 +210,34 @@ def estimate_loss():
     return out
 
 
-model = BigramLanguageModel()
-m = model.to(device)
 
-# create a PyTorch optimizer
-optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+if train_model:
+    model = BigramLanguageModel()
+    m = model.to(device)
+    # create a PyTorch optimizer
+    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
-for iteration in range(max_iters):
-    # every once in a while evaluate the loss on train and val sets
-    if iteration % eval_interval == 0:
-        losses = estimate_loss()
-        print(f"step {iteration}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
-    # sample a batch of data
-    xb, yb = get_batch('train')
-    # evaluate the loss
-    logits, loss = model(xb, yb)
-    optimizer.zero_grad(set_to_none=True)
-    loss.backward()
-    optimizer.step()
+    for iteration in range(max_iters):
+        # every once in a while evaluate the loss on train and val sets
+        if iteration % eval_interval == 0:
+            losses = estimate_loss()
+            print(f"step {iteration}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+        # sample a batch of data
+        xb, yb = get_batch('train')
+        # evaluate the loss
+        logits, loss = model(xb, yb)
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        optimizer.step()
+
+    # save the trained model so it can be reused
+    torch.save(model.state_dict(), "shakespear_model.pt")
+else:
+    print('loading model')
+    model = BigramLanguageModel()
+    model.load_state_dict(torch.load("poe_model.pt", weights_only=True))
+    model.eval()
+    m = model.to(device)
 
 # generate from the model
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
